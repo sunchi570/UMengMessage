@@ -20,7 +20,7 @@ namespace Sino.Web.UMengMessage
         private string _appkey;
         private string _secret;
 
-        public UMessage(string appkey,string secret)
+        public UMessage(string appkey, string secret)
         {
             if (String.IsNullOrWhiteSpace(appkey))
                 throw new ArgumentNullException("AppKey");
@@ -89,7 +89,7 @@ namespace Sino.Web.UMengMessage
         /// <param name="text">通知文字描述</param>
         /// <param name="aliastype">列播类型</param>
         /// <param name="alias">列播参数</param>
-        public async Task<MessageResponse> SendDroidListcastMessage(string ticker, string title, string text,string aliastype,params string[] alias)
+        public async Task<MessageResponse> SendDroidListcastMessage(string ticker, string title, string text, string aliastype, params string[] alias)
         {
             if (String.IsNullOrWhiteSpace(ticker))
                 throw new ArgumentNullException("ticker");
@@ -111,6 +111,56 @@ namespace Sino.Web.UMengMessage
                 AliasType = aliastype,
                 PayLoad = new DroidPayLoad
                 {
+                    DisplayType = DroidDisplayType.notification,
+                    Body = new DroidPayLoadBody
+                    {
+                        Ticker = ticker,
+                        Title = title,
+                        Text = text,
+                        AfterOpen = DroidAfterOpenType.go_app
+                    }
+                }
+            };
+
+#if DEBUG
+            msg.ProductionMode = "false";
+#endif
+
+            return await SendDroidMessage(msg);
+        }
+
+        /// <summary>
+        /// 发送Android列播推送
+        /// </summary>
+        /// <param name="ticker">通知栏提示文字</param>
+        /// <param name="title">通知标题</param>
+        /// <param name="text">通知文字描述</param>
+        /// <param name="Extra">自定义参数</param>
+        /// <param name="aliastype">列播类型</param>
+        /// <param name="alias">列播参数</param>
+        public async Task<MessageResponse> SendDroidListcastMessage(string ticker, string title, string text, Dictionary<string, string> Extra, string aliastype, params string[] alias)
+        {
+            if (String.IsNullOrWhiteSpace(ticker))
+                throw new ArgumentNullException("ticker");
+            if (String.IsNullOrWhiteSpace(title))
+                throw new ArgumentNullException("title");
+            if (String.IsNullOrWhiteSpace(text))
+                throw new ArgumentNullException("text");
+            if (String.IsNullOrWhiteSpace(aliastype))
+                throw new ArgumentNullException("aliastype");
+            if (alias == null || alias.Length <= 0)
+                throw new ArgumentNullException("alias");
+
+            DroidMessageRequest msg = new DroidMessageRequest
+            {
+                AppKey = _appkey,
+                TimeStamp = Utility.GetTimeStamp().ToString(),
+                SendType = SendType.customizedcast,
+                Alias = Utility.GetDeviceToken(alias),
+                AliasType = aliastype,
+                PayLoad = new DroidPayLoad
+                {
+                    Extra = Extra,
                     DisplayType = DroidDisplayType.notification,
                     Body = new DroidPayLoadBody
                     {
@@ -198,6 +248,52 @@ namespace Sino.Web.UMengMessage
                 SendType = SendType.customizedcast,
                 Alias = Utility.GetDeviceToken(alias),
                 AliasType = aliastype,
+                     
+                PayLoad = new TouchPayLoad
+                {
+
+                    Aps = new TouchAps
+                    {
+                        Alert = alert,
+                        Badge = badge
+                    }
+                }
+            };
+
+#if DEBUG
+            msg.ProductionMode = "false";
+#endif
+
+            return await SendTouchMessage(msg);
+        }
+
+        /// <summary>
+        /// 发送IOS列播推送
+        /// </summary>
+        /// <param name="alert">通知标题</param>
+        /// <param name="badge">徽章数</param>
+        /// <param name="Extra">自定义参数</param>
+        /// <param name="aliastype">列播类型</param>
+        /// <param name="alias">列播参数</param>
+        public async Task<MessageResponse> SendTouchListcastMessage(string alert, int badge, Dictionary<string,string> Extra, string aliastype, params string[] alias)
+        {
+            if (String.IsNullOrWhiteSpace(alert))
+                throw new ArgumentNullException("alert");
+            if (badge < 0)
+                throw new ArgumentOutOfRangeException("badge");
+            if (String.IsNullOrWhiteSpace(aliastype))
+                throw new ArgumentNullException("aliastype");
+            if (alias == null || alias.Length <= 0)
+                throw new ArgumentNullException("alias");
+
+            TouchMessageRequest msg = new TouchMessageRequest
+            {
+                AppKey = _appkey,
+                TimeStamp = Utility.GetTimeStamp().ToString(),
+                SendType = SendType.customizedcast,
+                Alias = Utility.GetDeviceToken(alias),
+                AliasType = aliastype,
+
                 PayLoad = new TouchPayLoad
                 {
                     Aps = new TouchAps
@@ -207,7 +303,13 @@ namespace Sino.Web.UMengMessage
                     }
                 }
             };
-
+            if (Extra!=null)
+            {
+                foreach (var item in Extra.Keys)
+                {
+                    msg.PayLoad.Add(item, Extra[item]);
+                }
+            }
 #if DEBUG
             msg.ProductionMode = "false";
 #endif
@@ -381,10 +483,10 @@ namespace Sino.Web.UMengMessage
         {
             if (String.IsNullOrWhiteSpace(request.AppKey))
                 throw new ArgumentNullException("AppKey");
-            
+
             if (String.IsNullOrWhiteSpace(request.TimeStamp))
                 throw new ArgumentNullException("TimeStamp");
-            
+
             if (request.SendType == SendType.listcast || request.SendType == SendType.unicast)
                 if (String.IsNullOrWhiteSpace(request.DeviceTokens))
                     throw new ArgumentNullException("DeviceTokens");
